@@ -488,6 +488,462 @@ void init()
         }
     }
 }
+int enterkey(){
+	int c; // not char c, to accomodate EOF
+	int first_char;
+	int is_first_char = 1;
+	while ((c = getchar()) != '\n' && c != EOF){
+		if (is_first_char == 1){
+			first_char = c;
+			is_first_char = 0;
+		}
+	}
+	return first_char;
+}
+
+void booksrch(){
+	system("cls");
+	gotoxy(20,4);
+	printf("\xB2\xB2\xB2\xB2\xB2\xB2 Welcome to Search Book! \xB2\xB2\xB2\xB2\xB2\xB2");
+	gotoxy(20,6);
+	printf("1. Search by Call ID");
+	gotoxy(20,8);
+	printf("2. Search by Book Name");
+	gotoxy(20,10);
+	printf("3. Search by Author\n");
+	gotoxy(20,12);
+    printf("\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xB2");
+	gotoxy(20,14);
+	printf("Enter your choice.......");
+	char choice = enterkey();
+	/**************************/
+	/* If anything other than 1 or 2 is entered, then error */
+	if (choice < '1' || choice > '3'){
+		gotoxy(20,16);
+		printf("It's an Invalid key!'... Press Enter to continue...");
+		enterkey();
+		return ;
+	}
+	else if (choice == '1'){
+		/* Option 1: Search by Call ID */
+		gotoxy(20,16);
+		printf("Search by Call ID");
+		gotoxy(20,17);
+		printf("The Call ID needs to be exact.");
+		char callid[6];
+		gotoxy(20,18);
+		printf("Enter your 5 digit Call ID: ");
+		strinp(callid, 5);
+		if (vldt_dgtstr(callid, 5) == 0){
+			gotoxy(20,19);
+			printf("Invalid Call ID!");
+			gotoxy(20,20);
+			printf("It should contains 5 digits only");
+			getch();
+			return ;
+		}
+		crfbooksrch(callid, 1);
+		FILE *fsearch = fopen("tmp/searchout.txt", "r");
+		// The columns will be callid, bookname, authors and number of available copies
+		int widths[] = {9, 58, 33, 7, 11, 8, 11};
+		char heading[100];
+		sprintf(heading, "Showing search results for Call ID '%s'", callid);
+		fdisp(fsearch, 7, widths, heading);
+		fclose(fsearch);
+		remove("tmp/searchout.txt");
+	}
+	else if (choice == '2'){
+		/* Option 2: Search by Book Name */
+		gotoxy(20,16);
+		printf("Search by Book Name");
+		gotoxy(20,17);
+		printf("you can search by characters in book name.");
+		gotoxy(20,18);
+		printf("For example, to search for 'Basics of C language', you can enter 'basics'.");
+		gotoxy(20,19);
+		printf("Enter (Book Name) search term (50 characters max): ");
+		char searchterm[51];
+		strinp(searchterm, 50);
+		crfbooksrch(searchterm, 2);
+		FILE *fsearch = fopen("tmp/searchout.txt", "r");
+		// The columns will be callid, bookname, authors and number of available copies
+		int widths[] = {9, 58, 33, 7, 11, 8, 11};
+		char heading[100];
+		sprintf(heading, "Showing search results for Book Name '%s'", searchterm);
+		fdisp(fsearch, 7, widths, heading);
+		fclose(fsearch);
+		remove("tmp/searchout.txt");
+	}
+	else if (choice == '3'){
+		/* Option 3: Search by Author/s */
+		gotoxy(20,16);
+		printf("Search by Author/s");
+		gotoxy(20,17);
+		printf("You can search by characters in author/s name.");
+		gotoxy(20,19);
+		printf("Enter (Author/s) search term (50 characters max): ");
+		char searchterm[51];
+		strinp(searchterm, 50);
+		crfbooksrch(searchterm, 3);
+		FILE *fsearch = fopen("tmp/searchout.txt", "r");
+		// The columns will be callid, bookname, authors and number of available copies
+		// Adjust widths according to it
+		int widths[] = {9, 58, 33, 7, 11, 8, 11};
+		char heading[100];
+		sprintf(heading, "Showing search results for Author/s '%s'", searchterm);
+		fdisp(fsearch, 7, widths, heading);
+		fclose(fsearch);
+		remove("tmp/searchout.txt");
+	}
+	return ;
+}
+void issuebook(char username[]){
+	system("cls");
+	gotoxy(35,5);
+	printf(" Issue Book");
+	gotoxy(25,7);
+	printf("Enter Call ID book to issue: ");
+	/************************************/
+	/* Get callid */
+	char callid[6];
+	strinp(callid, 5);
+	// If callid input invalid, then error
+	if (vldt_dgtstr(callid, 5) == 0){
+		gotoxy(25,8);
+		printf("Invalid Call ID!");
+		gotoxy(25,9);
+		printf("Should be of length 5 containing only digits! Press Enter to continue...");
+		enterkey();
+		return ;
+	}
+	/**************************/
+	/* Open file pointers */
+	FILE *fbooks = fopen("data/books_info.txt", "r");
+	FILE *fbooks_tmp = fopen("tmp/books_tmp.txt", "w");
+	/**************************/
+	/* Get and put the header */
+	char row[3000];
+	fgets(row, 3000, fbooks);
+	fputs(row, fbooks_tmp);
+	/**************************/
+	/* Check if callid entered exists */
+	char exist_callid[6];
+	int found = 0;
+	while (fgets(row, 3000, fbooks) != NULL){
+		rowele_extrxt(exist_callid, row, 1);
+		if (strcmp(callid, exist_callid) == 0){
+			found = 1;
+			break;
+		}
+		// Keep on putting rows in books_tmp until callid is found (matching row not put yet)
+		fputs(row, fbooks_tmp);
+	}
+	/**************************/
+	/* If callid not found, then error */
+	if (found == 0){
+		gotoxy(25,8);
+		printf("Call ID not found! Press Enter to continue...");
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		remove("tmp/books_tmp.txt");
+		enterkey();
+		return ;
+	}
+	/**************************/
+	/* If given callid is found */
+	// Extract all info from required row
+	printf("\nBook Found!");
+	printf("\n-----------");
+	char bookname[1001];
+	char authors[1001];
+	char copynos[201];
+	char ref[201];
+	char issue[201];
+	rowele_extrxt(bookname, row, 2);
+	rowele_extrxt(authors, row, 3);
+	rowele_extrxt(copynos, row, 4);
+	rowele_extrxt(ref, row, 5);
+	rowele_extrxt(issue, row, 6);
+	// Display Book Name, Author/s, Existing Copies, Reference Copies
+	printf("\nBook Name: %s", bookname);
+	printf("\nAuthor/s: %s", authors);
+	printf("\nExisting Copy Numbers: ");
+	dispconcat(copynos, 2);
+	printf("\nReference Copies: ");
+	dispconcat(ref, 2);
+	printf("\nIssued Copies: ");
+	dispconcat(issue, 2);
+	/**************************/
+	FILE *fusers = fopen("data/users_login.txt", "r");
+	FILE *fusers_tmp = fopen("tmp/users_tmp.txt", "w");
+	/**************************/
+	/* Get and put the header */
+	fgets(row, 3000, fusers);
+	fputs(row, fusers_tmp);
+	/**************************/
+	char exist_username[51];
+	while (fgets(row, 3000, fusers) != NULL){
+		rowele_extrxt(exist_username, row, 1);
+		if (strcmp(exist_username, username) == 0){
+			// This username will always be found because it will be called by the logged in user
+			break;
+		}
+		fputs(row, fusers_tmp);
+	}
+	// If a copy of book already issued,  or if five books already isseud then error
+	char password[51];
+	char name[101];
+	char type[2];
+	char issued_callids[MAXISSUE*5+1];
+	char issued_copies[MAXISSUE*2+1];
+	char issued_ons[MAXISSUE*8+1];
+	rowele_extrxt(password, row, 2);
+	rowele_extrxt(name, row, 3);
+	rowele_extrxt(type, row, 4);
+	rowele_extrxt(issued_callids, row, 5);
+	rowele_extrxt(issued_copies, row, 6);
+	rowele_extrxt(issued_ons, row, 7);
+	// If a copy of the book already issued by user, then error
+	if (mtchconcat(callid, issued_callids) != 0){
+		printf("\n\nA copy of the book is already issued by user %s! Cannot issue book...", username);
+		enterkey();
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/books_tmp.txt");
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	// If 5 books issued by user, then error
+	if (strlen(issued_callids) == MAXISSUE * 5){ // since 5 is the length of callids
+		printf("\n\nMax issueable books (5) reached by user %s! Cannot issue book...", username);
+		enterkey();
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/books_tmp.txt");
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	// Now check the total number of issueable copies (not currently issueable, just issueable i.e. total-reference)
+	// If issueable copies <= 3, allow issue only if type faculty
+	if ((strlen(copynos) - strlen(ref))/2 <= 3 && strcmp(type, "S") == 0){
+		printf("\n\nSorry. Only 3 issueable copies! Only faculties can issue! Press Enter to continue...");
+		enterkey();
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/books_tmp.txt");
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	// If number of copies left (except for reference copies) is 0, then error
+	if ((strlen(copynos) - strlen(ref) - strlen(issue)) == 0){
+		printf("\n\nSorry, No Copies Left! ;-( Please try later...");
+		enterkey();
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/books_tmp.txt");
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	// Now ask for copy number which user wants to take
+	char to_issue[3];
+	printf("\n\nEnter copy number to issue: ");
+	strinp(to_issue, 2);
+	if (vldt_dgtstr(to_issue, 2) == 0){
+		printf("\n\nInvalid Copy Number! Press Enter to continue...");
+		enterkey();
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/books_tmp.txt");
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	// If asked copy doesnt exist
+	if (mtchconcat(to_issue, copynos) == 0){
+		printf("\n\nCopy not found! Press Enter to continue...");
+		enterkey();
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/books_tmp.txt");
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	// If asked copy is already issued (by another user)
+	if (mtchconcat(to_issue, issue) != 0){
+		printf("\n\nCopy already issued by another user! Cannot be issued! Press Enter to continue...");
+		enterkey();
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/books_tmp.txt");
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	// If asked copy is a reference copy
+	if (mtchconcat(to_issue, ref) != 0){
+		printf("\n\nIt's a Reference Copy! Cannot be issued! Press Enter to continue...");
+		enterkey();
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/books_tmp.txt");
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	// Ask for current date (NOT IDEAL)
+	char date[9];
+	printf("Enter issue date (Warning: Incorrect information can lead to temporary suspension of library facilities) (ddmmyyyy): ");
+	strinp(date, 8);
+	if (vldt_dgtstr(date, 8) == 0){
+		printf("\n\n Date Format is Incorrect! Press Enter to continue...");
+		enterkey();
+		fclose(fbooks);
+		fclose(fbooks_tmp);
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/books_tmp.txt");
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	// Now if everything is fine, add to issue in books_info.txt and add to issued_callid, issued_copies, issued_on in users_login.txt
+	append(issue, to_issue);
+	fprintf(fbooks_tmp, "%s|%s|%s|%s|%s|%s|\n", callid, bookname, authors, copynos, ref, issue);
+	while (fgets(row, 3000, fbooks) != NULL){
+		fputs(row, fbooks_tmp);
+	}
+	append(issued_callids, callid);
+	append(issued_copies, to_issue);
+	append(issued_ons, date);
+	fprintf(fusers_tmp, "%s|%s|%s|%s|%s|%s|%s|\n", username, password, name, type, issued_callids, issued_copies, issued_ons);
+	while (fgets(row, 3000, fusers) != NULL){
+		fputs(row, fusers_tmp);
+	}
+	printf("\n\nBook has been Issued to you Successfully!! Press Enter to continue...");
+	enterkey();
+	fclose(fbooks);
+	fclose(fbooks_tmp);
+	fclose(fusers);
+	fclose(fusers_tmp);
+	remove("data/books_info.txt");
+	remove("data/users_login.txt");
+	rename("tmp/books_tmp.txt", "data/books_info.txt");
+	rename("tmp/users_tmp.txt", "data/users_login.txt");
+	return ;
+}
+
+void returnbook(char username[]){
+	system("cls");
+	gotoxy(35,5);
+	printf("Book Return");
+	gotoxy(25,7);
+	usrinfo(username, 0, 0);
+	printf("\n\nEnter Call ID of book to return: ");
+	char callid[6];
+	strinp(callid, 5);
+	FILE *fusers = fopen("data/users_login.txt", "r");
+	FILE *fusers_tmp = fopen("tmp/users_tmp.txt", "w");
+	char row[3000];
+	/* Get and put header */
+	fgets(row, 3000, fusers);
+	fputs(row, fusers_tmp);
+	/***********************/
+	char exist_username[51];
+	while (fgets(row, 3000, fusers) != NULL){
+		rowele_extrxt(exist_username, row, 1);
+		if (strcmp(exist_username, username) == 0){
+			break;
+		}
+		fputs(row, fusers_tmp);
+	}
+	char password[51];
+	char name[101];
+	char type[2];
+	char issued_callids[MAXISSUE*5+1];
+	char issued_copies[MAXISSUE*2+1];
+	char issued_ons[MAXISSUE*8+1];
+	rowele_extrxt(password, row, 2);
+	rowele_extrxt(name, row, 3);
+	rowele_extrxt(type, row, 4);
+	rowele_extrxt(issued_callids, row, 5);
+	rowele_extrxt(issued_copies, row, 6);
+	rowele_extrxt(issued_ons, row, 7);
+	int index = mtchconcat(callid, issued_callids);
+	if (index == 0){
+		printf("\n\n This book is not issued by you.\nYou can not return this book! Press Enter to continue...");
+		enterkey();
+		fclose(fusers);
+		fclose(fusers_tmp);
+		remove("tmp/users_tmp.txt");
+		return ;
+	}
+	char new_issued_callids[MAXISSUE*5+1];
+	char new_issued_copies[MAXISSUE*2+1];
+	char new_issued_ons[MAXISSUE*8+1];
+	esconcat(issued_callids, new_issued_callids, 5, index);
+	esconcat(issued_copies, new_issued_copies, 2, index);
+	esconcat(issued_ons, new_issued_ons, 8, index);
+	fprintf(fusers_tmp, "%s|%s|%s|%s|%s|%s|%s|\n", username, password, name, type, new_issued_callids, new_issued_copies, new_issued_ons);
+	char skip_copy[3];
+	concatindex(skip_copy, issued_copies, 2, index);
+	while (fgets(row, 3000, fusers) != NULL){
+		fputs(row, fusers_tmp);
+	}
+	FILE *fbooks = fopen("data/books_info.txt", "r");
+	FILE *fbooks_tmp =fopen("tmp/books_tmp.txt", "w");
+	/* Get and put header */
+	fgets(row, 3000, fbooks);
+	fputs(row, fbooks_tmp);
+	/***********************/
+	char exist_callid[6];
+	while (fgets(row, 3000, fbooks) != NULL){
+		rowele_extrxt(exist_callid, row, 1);
+		if (strcmp(exist_callid, callid) == 0){
+			break;
+		}
+		fputs(row, fbooks_tmp);
+	}
+	char bookname[1001];
+	char authors[1001];
+	char copynos[201];
+	char ref[201];
+	char issue[201];
+	rowele_extrxt(bookname, row, 2);
+	rowele_extrxt(authors, row, 3);
+	rowele_extrxt(copynos, row, 4);
+	rowele_extrxt(ref, row, 5);
+	rowele_extrxt(issue, row, 6);
+	char newissue[201];
+	ecpcopy(issue, newissue, skip_copy);
+	fprintf(fbooks_tmp, "%s|%s|%s|%s|%s|%s|\n", callid, bookname, authors, copynos, ref, newissue);
+	while (fgets(row, 3000, fbooks) != NULL){
+		fputs(row, fbooks_tmp);
+	}
+	printf("\n\nYour Book returned successfully!! Press Enter to continue...");
+	enterkey();
+	fclose(fusers);
+	fclose(fusers_tmp);
+	fclose(fbooks);
+	fclose(fbooks_tmp);
+	remove("data/books_info.txt");
+	rename("tmp/books_tmp.txt", "data/books_info.txt");
+	remove("data/users_login.txt"); 
+	rename("tmp/users_tmp.txt", "data/users_login.txt");
+	return ;
+}
+
 int main()
 {
     init();
